@@ -17,7 +17,7 @@ const REMOVABLE_SOURCES = new Set<RemovableSkillSource>([
   "openclaw-workspace",
 ]);
 
-const SAFE_PATH_RE = /^[a-zA-Z0-9_.~\x2F-]+$/;
+const SAFE_PATH_RE = /^[a-zA-Z0-9_.~\x2F:\\-]+$/;
 
 const normalizeRequired = (value: unknown, field: string): string => {
   if (typeof value !== "string") {
@@ -89,7 +89,8 @@ export async function POST(request: Request) {
       message.includes("Remote workspace skill removal is not supported over SSH") ||
       message.includes("Gateway URL is missing") ||
       message.includes("Invalid gateway URL") ||
-      message.includes("require OPENCLAW_GATEWAY_SSH_TARGET")
+      message.includes("require OPENCLAW_GATEWAY_SSH_TARGET") ||
+      message.includes("invalid characters")
         ? 400
         : 500;
     if (status >= 500) {
