@@ -1112,6 +1112,13 @@ export const useGatewayConnection = (
       ...adapterProfiles,
       [selectedAdapterType]: {
         url: nextGatewayUrl,
+        token,
+      },
+    };
+    const patchProfiles = {
+      ...adapterProfiles,
+      [selectedAdapterType]: {
+        url: nextGatewayUrl,
         token: persistToken,
       },
     };
@@ -1140,7 +1147,7 @@ export const useGatewayConnection = (
           url: nextGatewayUrl,
           token: persistToken,
           adapterType: selectedAdapterType,
-          profiles: nextProfiles,
+          profiles: patchProfiles,
         },
       },
       400

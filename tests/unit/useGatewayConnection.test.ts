@@ -338,7 +338,7 @@ describe("useGatewayConnection", () => {
       expect(screen.getByTestId("shouldPromptForConnect")).toHaveTextContent("no");
     });
     await waitFor(() => {
-      expect(captured.url).toBe("ws://localhost:3000/api/gateway/ws");
+      expect(captured.url).toBe("ws://127.0.0.1:3000/api/gateway/ws");
     });
   });
 
@@ -598,7 +598,7 @@ describe("useGatewayConnection", () => {
       expect(screen.getByTestId("shouldPromptForConnect")).toHaveTextContent("no");
     });
     await waitFor(() => {
-      expect(captured.url).toBe("ws://localhost:3000/api/gateway/ws");
+      expect(captured.url).toBe("ws://127.0.0.1:3000/api/gateway/ws");
     });
   });
 

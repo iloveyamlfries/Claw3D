@@ -158,7 +158,7 @@ describe("hydrateAgentFleetFromGateway", () => {
       expect.objectContaining({
         agentId: "agent-2",
         name: "GLaDOS",
-        runtimeName: "GLaDOS",
+        runtimeName: "Two",
         identityName: "GLaDOS",
         sessionExecHost: "gateway",
         sessionExecSecurity: "full",
