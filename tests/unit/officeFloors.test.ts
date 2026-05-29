@@ -15,7 +15,6 @@ describe("office floor registry", () => {
   it("defines the canonical floor order", () => {
     expect(OFFICE_FLOORS.map((floor) => floor.id)).toEqual([
       "lobby",
-      "openclaw-ground",
       "hermes-first",
       "local-runtime",
       "claw3d-runtime",
@@ -42,7 +41,6 @@ describe("office floor registry", () => {
   it("lists only enabled floors by default", () => {
     expect(listEnabledOfficeFloors().map((floor) => floor.id)).toEqual([
       "lobby",
-      "openclaw-ground",
       "hermes-first",
       "local-runtime",
       "claw3d-runtime",
@@ -51,8 +49,8 @@ describe("office floor registry", () => {
   });
 
   it("lists floors for a provider", () => {
+    expect(listOfficeFloorsForProvider("openclaw").map((floor) => floor.id)).toEqual(["lobby"]);
     expect(listOfficeFloorsForProvider("demo").map((floor) => floor.id)).toEqual([
-      "lobby",
       "training",
       "traders-floor",
       "campus",
@@ -62,7 +60,6 @@ describe("office floor registry", () => {
   it("groups floors by zone for building navigation", () => {
     expect(listOfficeFloorsForZone("building").map((floor) => floor.id)).toEqual([
       "lobby",
-      "openclaw-ground",
       "hermes-first",
       "local-runtime",
       "claw3d-runtime",
@@ -78,10 +75,11 @@ describe("office floor registry", () => {
     expect(resolveActiveOfficeFloorId("hermes-first")).toBe("hermes-first");
     expect(resolveActiveOfficeFloorId("training")).toBe("lobby");
     expect(resolveActiveOfficeFloorId(null)).toBe("lobby");
+    expect(resolveActiveOfficeFloorId("openclaw-ground" as never)).toBe("lobby");
   });
 
   it("cycles across enabled floors only", () => {
-    expect(getAdjacentEnabledOfficeFloorId("lobby", 1)).toBe("openclaw-ground");
+    expect(getAdjacentEnabledOfficeFloorId("lobby", 1)).toBe("hermes-first");
     expect(getAdjacentEnabledOfficeFloorId("lobby", -1)).toBe("custom-second");
   });
 });

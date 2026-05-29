@@ -202,9 +202,9 @@ describe("studio settings normalization", () => {
   it("creates default per-floor runtime state", () => {
     const normalized = normalizeStudioSettings(null);
 
-    expect(normalized.officeFloors["openclaw-ground"]).toEqual(
+    expect(normalized.officeFloors.lobby).toEqual(
       expect.objectContaining({
-        floorId: "openclaw-ground",
+        floorId: "lobby",
         provider: "openclaw",
         runtimeProfileId: "openclaw-default",
         gatewayUrl: null,

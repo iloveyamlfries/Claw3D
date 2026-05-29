@@ -40,7 +40,7 @@ describe("useOfficeFloorRuntimePersistence", () => {
       (props) => useOfficeFloorRuntimePersistence(props),
       {
         initialProps: {
-          activeFloorId: "openclaw-ground" as FloorId,
+          activeFloorId: "lobby" as FloorId,
           gatewayUrl: "ws://openclaw:18789",
           status: "connecting" as GatewayStatus,
           gatewayError: null,
@@ -54,7 +54,7 @@ describe("useOfficeFloorRuntimePersistence", () => {
     expect(updateSettings).toHaveBeenCalledWith(
       expect.objectContaining({
         officeFloors: expect.objectContaining({
-          "openclaw-ground": expect.objectContaining({ status: "connecting" }),
+          lobby: expect.objectContaining({ status: "connecting" }),
         }),
       }),
     );
@@ -69,7 +69,7 @@ describe("useOfficeFloorRuntimePersistence", () => {
       (props) => useOfficeFloorRuntimePersistence(props),
       {
         initialProps: {
-          activeFloorId: "openclaw-ground" as FloorId,
+          activeFloorId: "lobby" as FloorId,
           gatewayUrl: "ws://openclaw:18789",
           status: "connected" as GatewayStatus,
           gatewayError: null,
@@ -103,7 +103,7 @@ describe("useOfficeFloorRuntimePersistence", () => {
       (props) => useOfficeFloorRuntimePersistence(props),
       {
         initialProps: {
-          activeFloorId: "openclaw-ground" as FloorId,
+          activeFloorId: "lobby" as FloorId,
           gatewayUrl: "ws://openclaw:18789",
           status: "connected" as GatewayStatus,
           gatewayError: null,
@@ -126,7 +126,7 @@ describe("useOfficeFloorRuntimePersistence", () => {
 
     await act(() => vi.runAllTimersAsync());
 
-    // The patch should target hermes-first, not openclaw-ground.
+    // The patch should target hermes-first, not lobby.
     expect(updateSettings).toHaveBeenCalledTimes(1);
     expect(updateSettings).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -138,7 +138,7 @@ describe("useOfficeFloorRuntimePersistence", () => {
     expect(updateSettings).not.toHaveBeenCalledWith(
       expect.objectContaining({
         officeFloors: expect.objectContaining({
-          "openclaw-ground": expect.anything(),
+          lobby: expect.anything(),
         }),
       }),
     );
@@ -151,7 +151,7 @@ describe("useOfficeFloorRuntimePersistence", () => {
       (props) => useOfficeFloorRuntimePersistence(props),
       {
         initialProps: {
-          activeFloorId: "openclaw-ground" as FloorId,
+          activeFloorId: "lobby" as FloorId,
           gatewayUrl: "ws://openclaw:18789",
           status: "connecting" as GatewayStatus,
           gatewayError: null,
@@ -183,11 +183,11 @@ describe("useOfficeFloorRuntimePersistence", () => {
 
     await act(() => vi.runAllTimersAsync());
 
-    // Error must be stamped on openclaw-ground (which owns the URL), not hermes-first.
+    // Error must be stamped on lobby (which owns the URL), not hermes-first.
     expect(updateSettings).toHaveBeenCalledWith(
       expect.objectContaining({
         officeFloors: expect.objectContaining({
-          "openclaw-ground": expect.objectContaining({
+          lobby: expect.objectContaining({
             status: "error",
             lastErrorMessage: "ECONNREFUSED",
           }),

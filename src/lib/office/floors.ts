@@ -10,7 +10,6 @@ export type FloorZone = "building" | "outside";
 
 export type FloorId =
   | "lobby"
-  | "openclaw-ground"
   | "hermes-first"
   | "local-runtime"
   | "claw3d-runtime"
@@ -38,22 +37,11 @@ export const OFFICE_FLOORS: readonly FloorDefinition[] = [
     id: "lobby",
     label: "Lobby",
     shortLabel: "Lobby",
-    provider: "demo",
-    kind: "lobby",
-    zone: "building",
-    enabled: true,
-    sortOrder: 0,
-    runtimeProfileId: null,
-  },
-  {
-    id: "openclaw-ground",
-    label: "OpenClaw Floor",
-    shortLabel: "OpenClaw",
     provider: "openclaw",
     kind: "runtime",
     zone: "building",
     enabled: true,
-    sortOrder: 10,
+    sortOrder: 0,
     runtimeProfileId: "openclaw-default",
   },
   {
@@ -165,18 +153,19 @@ export const resolveActiveOfficeFloorId = (floorId: FloorId | null | undefined):
 
 /**
  * Floors visible in the nav for a given active adapter.
- * - Lobby (kind="lobby") always shown.
+ * - The default floor is always shown.
  * - Runtime floors shown only when their provider matches the active adapter.
  * - Non-runtime enabled floors (training, market, campus) always shown.
  *
- * When activeAdapterType is null/undefined/"demo", only lobby + non-runtime floors appear.
+ * When activeAdapterType is null/undefined/"demo", only the default floor +
+ * non-runtime floors appear.
  */
 export const listAvailableFloorsForAdapter = (
   activeAdapterType: FloorProvider | "demo" | null | undefined,
 ): FloorDefinition[] => {
   return OFFICE_FLOORS.filter((floor) => {
     if (!floor.enabled) return false;
-    if (floor.kind === "lobby") return true;
+    if (floor.id === DEFAULT_ACTIVE_FLOOR_ID) return true;
     if (floor.kind === "runtime") {
       return (
         Boolean(activeAdapterType) &&
