@@ -1,6 +1,6 @@
 import { createElement, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 
 import type { AgentPermissionsDraft } from "@/features/agents/operations/agentPermissionsOperation";
 import type { CronCreateDraft } from "@/lib/cron/createPayloadBuilder";
@@ -277,6 +277,7 @@ describe("useAgentSettingsMutationController", () => {
   });
 
   afterEach(() => {
+    cleanup();
     vi.restoreAllMocks();
   });
 
