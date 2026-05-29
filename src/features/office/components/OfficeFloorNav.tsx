@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import {
@@ -111,17 +111,16 @@ export function OfficeFloorNav({
     OFFICE_FLOORS.find((floor) => floor.id === displayActiveFloorId) ?? OFFICE_FLOORS[0];
   const activeRoster = floorRosterCache[activeFloor.id];
 
-  const [directoryCollapsed, setDirectoryCollapsed] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const [directoryCollapsed, setDirectoryCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
     try {
       const stored = window.localStorage.getItem(DIRECTORY_COLLAPSED_STORAGE_KEY);
-      if (stored === "true") setDirectoryCollapsed(true);
+      return stored === "true";
     } catch {
       // localStorage may be unavailable (private mode, SSR, etc.); ignore.
+      return false;
     }
-  }, []);
+  });
 
   const toggleDirectoryCollapsed = () => {
     setDirectoryCollapsed((current) => {
