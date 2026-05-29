@@ -2,6 +2,7 @@ const { Buffer } = require("node:buffer");
 const { WebSocket, WebSocketServer } = require("ws");
 
 const DEFAULT_UPSTREAM_HANDSHAKE_TIMEOUT_MS = 10_000;
+const OPENCLAW_CONTROL_UI_CLIENT_ID = "openclaw-control-ui";
 
 /** Maximum frame payload size (256 KB). */
 const MAX_FRAME_SIZE = 256 * 1024;
@@ -243,6 +244,7 @@ function createGatewayProxy(options) {
         return;
       }
 
+      const usesHostToken = !browserHasAuth && Boolean(upstreamToken);
       const baseConnectFrame = browserHasAuth
         ? frame
         : {
@@ -253,20 +255,11 @@ function createGatewayProxy(options) {
       const connectParams = isObject(baseConnectFrame.params)
         ? { ...baseConnectFrame.params }
         : {};
-      const hasDeviceAuth = hasCompleteDeviceAuth(connectParams);
       const client = isObject(connectParams.client) ? { ...connectParams.client } : {};
-      const clientId = typeof client.id === "string" ? client.id.trim() : "";
 
-      if (
-        upstreamAdapterType === "openclaw" &&
-        clientId === "openclaw-control-ui" &&
-        !hasDeviceAuth
-      ) {
-        client.id = "webchat-ui";
+      if (upstreamAdapterType === "openclaw" && usesHostToken) {
+        client.id = OPENCLAW_CONTROL_UI_CLIENT_ID;
         connectParams.client = client;
-        if (isObject(connectParams.device) && !hasCompleteDeviceAuth(connectParams)) {
-          delete connectParams.device;
-        }
       }
 
       const connectFrame = {
