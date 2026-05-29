@@ -230,7 +230,6 @@ export async function hydrateAgentFleetFromGateway(params: {
           }
           return {
             ...agent,
-            name: recoveredName,
             identity: {
               ...(agent.identity ?? {}),
               name: recoveredName,
