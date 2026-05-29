@@ -15,10 +15,6 @@ export const resolveStudioProxyGatewayUrl = (
       if (isLoopbackHost(parsed.hostname) && isLoopbackHost(currentLocation.hostname)) {
         return raw;
       }
-      if (isLoopbackHost(parsed.hostname) && !isLoopbackHost(currentLocation.hostname)) {
-        parsed.hostname = currentLocation.hostname;
-        return parsed.toString();
-      }
     } catch {
       // Fall through to the Studio proxy for malformed or non-URL values.
     }

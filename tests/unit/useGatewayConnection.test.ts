@@ -238,6 +238,7 @@ describe("useGatewayConnection", () => {
     await waitFor(() => {
       expect(captured.url).toBe("ws://127.0.0.1:3000/api/gateway/ws");
     });
+    expect(captured.token).toBe("");
     expect(captured.authScopeKey).toBe("wss://pi5.myth-coho.ts.net");
     expect(captured.clientName).toBe("openclaw-control-ui");
   });
@@ -284,6 +285,7 @@ describe("useGatewayConnection", () => {
     await waitFor(() => {
       expect(captured.url).toBe("ws://localhost:18789");
     });
+    expect(captured.token).toBe("shared-token");
     expect(captured.authScopeKey).toBe("ws://localhost:18789");
     expect(captured.clientName).toBe("openclaw-control-ui");
   });
@@ -380,7 +382,7 @@ describe("useGatewayConnection", () => {
       mod.resolveGatewayClientNameForConnection(
         "openclaw",
         "ws://localhost:18790",
-        "ws://100.91.24.29:18790/"
+        "ws://100.91.24.29:3000/api/gateway/ws"
       )
     ).toBe("openclaw-control-ui");
     expect(

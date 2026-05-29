@@ -196,6 +196,7 @@ function createGatewayProxy(options) {
     let pendingConnectFrame = null;
     let pendingUpstreamSetupError = null;
     let closed = false;
+    let upstreamStarted = false;
     const frameRateLimiter = createFrameRateLimiter();
     let upstreamHandshakeTimeoutId = null;
 
@@ -310,6 +311,9 @@ function createGatewayProxy(options) {
           code: "studio.gateway_url_missing",
           message: "Upstream gateway URL is not configured on the Studio host.",
         };
+        if (connectRequestId) {
+          sendConnectError(pendingUpstreamSetupError.code, pendingUpstreamSetupError.message);
+        }
         return;
       }
 
@@ -318,6 +322,9 @@ function createGatewayProxy(options) {
           code: "studio.gateway_url_blocked",
           message: "Upstream gateway URL is not in the allowed hosts list.",
         };
+        if (connectRequestId) {
+          sendConnectError(pendingUpstreamSetupError.code, pendingUpstreamSetupError.message);
+        }
         return;
       }
 
@@ -329,6 +336,9 @@ function createGatewayProxy(options) {
           code: "studio.gateway_url_invalid",
           message: "Upstream gateway URL is invalid on the Studio host.",
         };
+        if (connectRequestId) {
+          sendConnectError(pendingUpstreamSetupError.code, pendingUpstreamSetupError.message);
+        }
         return;
       }
 
@@ -439,8 +449,6 @@ function createGatewayProxy(options) {
       log("proxy connected");
     };
 
-    void startUpstream();
-
     browserWs.on("message", async (raw) => {
       const rawStr = String(raw ?? "");
       const rawByteLength = Buffer.byteLength(rawStr, "utf8");
@@ -499,6 +507,10 @@ function createGatewayProxy(options) {
           return;
         }
         pendingConnectFrame = parsed;
+        if (!upstreamStarted) {
+          upstreamStarted = true;
+          void startUpstream();
+        }
         maybeForwardPendingConnect();
         return;
       }
@@ -517,8 +529,14 @@ function createGatewayProxy(options) {
       upstreamWs.send(JSON.stringify(parsed));
     });
 
-    browserWs.on("close", () => {
-      log("[gateway-proxy] browser disconnected");
+    browserWs.on("close", (code, reasonBuffer) => {
+      const reason =
+        typeof reasonBuffer === "string"
+          ? reasonBuffer
+          : Buffer.isBuffer(reasonBuffer)
+            ? reasonBuffer.toString()
+            : "";
+      log(`[gateway-proxy] browser disconnected code=${code} reason=${reason || "(none)"}`);
       closeBoth(1000, "client closed");
     });
 

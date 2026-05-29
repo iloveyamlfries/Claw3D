@@ -126,7 +126,7 @@ const isAutoManagedAdapter = (adapterType: StudioGatewayAdapterType) =>
   adapterType === "openclaw" || adapterType === "hermes" || adapterType === "demo";
 
 export const resolveGatewayClientName = (
-  adapterType: StudioGatewayAdapterType,
+  _adapterType: StudioGatewayAdapterType,
   _gatewayUrl: string
 ) => {
   return OPENCLAW_CONTROL_UI_CLIENT_ID;
@@ -940,9 +940,10 @@ export const useGatewayConnection = (
           const browserGatewayUrl = resolveStudioProxyGatewayUrl(
             selectedAdapterType === "openclaw" ? gatewayUrl : undefined
           );
+          const browserToken = browserGatewayUrl === gatewayUrl ? token : "";
           await client.connect({
             gatewayUrl: browserGatewayUrl,
-            token,
+            token: browserToken,
             authScopeKey: gatewayUrl,
             clientName: resolveGatewayClientNameForConnection(
               selectedAdapterType,

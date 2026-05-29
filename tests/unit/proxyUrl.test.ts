@@ -19,10 +19,10 @@ describe("resolveStudioProxyGatewayUrl", () => {
     ).toBe("ws://localhost:18790");
   });
 
-  it("rewrites a local gateway to the Studio host when Studio is opened remotely", () => {
+  it("uses the Studio proxy for a local gateway when Studio is opened remotely", () => {
     expect(
       resolveStudioProxyGatewayUrl("ws://localhost:18790", locationFor("100.91.24.29"))
-    ).toBe("ws://100.91.24.29:18790/");
+    ).toBe("ws://100.91.24.29:3000/api/gateway/ws");
   });
 
   it("uses the Studio proxy for non-local upstreams", () => {

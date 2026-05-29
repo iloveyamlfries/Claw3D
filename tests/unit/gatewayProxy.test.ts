@@ -186,7 +186,7 @@ describe("createGatewayProxy", () => {
     }
   });
 
-  it("forwards upstream connect.challenge before browser connect and then passes nonce-based device auth", async () => {
+  it("forwards upstream connect.challenge and then passes nonce-based device auth", async () => {
     const upstream = new WebSocketServer({ port: 0 });
     const address = upstream.address();
     if (!address || typeof address === "string") {
@@ -207,6 +207,7 @@ describe("createGatewayProxy", () => {
         const parsed = JSON.parse(String(raw));
         if (parsed?.method === "connect") {
           seenDeviceNonce = parsed?.params?.device?.nonce ?? null;
+          if (!seenDeviceNonce) return;
           ws.send(
             JSON.stringify({
               type: "res",
@@ -223,7 +224,7 @@ describe("createGatewayProxy", () => {
 
     const proxyHttp = await import("node:http").then((m) => m.createServer());
     const proxy = createGatewayProxy({
-      loadUpstreamSettings: async () => ({ url: upstreamUrl, token: "" }),
+      loadUpstreamSettings: async () => ({ url: upstreamUrl, token: "host-token-123" }),
       allowWs: (req: { url?: string }) => req.url === "/api/gateway/ws",
       logError: () => {},
     });
@@ -238,6 +239,14 @@ describe("createGatewayProxy", () => {
     const browser = new WebSocket(`ws://127.0.0.1:${proxyAddr.port}/api/gateway/ws`);
     try {
       await waitForEvent(browser, "open");
+      browser.send(
+        JSON.stringify({
+          type: "req",
+          id: "connect-before-challenge",
+          method: "connect",
+          params: {},
+        })
+      );
 
       const [challengeRaw] = await waitForEvent<[WebSocket.RawData]>(browser, "message");
       const challenge = JSON.parse(String(challengeRaw ?? ""));
