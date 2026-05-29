@@ -4842,7 +4842,7 @@ export function OfficeScreen({
     "Connected to the gateway, but no agents were loaded into the office.";
 
   return (
-    <main className="relative h-full w-full overflow-hidden bg-black">
+    <main className="relative h-full w-full overflow-auto bg-black">
       {showGatewayLoadingOverlay ? (
         <div
           className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-[#120a05]/76"
