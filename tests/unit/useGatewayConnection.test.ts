@@ -282,7 +282,7 @@ describe("useGatewayConnection", () => {
     render(createElement(Probe));
 
     await waitFor(() => {
-      expect(captured.url).toBe("ws://127.0.0.1:3000/api/gateway/ws");
+      expect(captured.url).toBe("ws://localhost:18789");
     });
     expect(captured.authScopeKey).toBe("ws://localhost:18789");
     expect(captured.clientName).toBe("openclaw-control-ui");
@@ -488,6 +488,52 @@ describe("useGatewayConnection", () => {
       expect(screen.getByTestId("gatewayUrl")).toHaveTextContent("ws://localhost:18789");
     });
     expect(screen.getByTestId("token")).toHaveTextContent("local-token");
+  });
+
+  it("prefers_private_local_defaults_token_when_available", async () => {
+    const { useGatewayConnection } = await setupAndImportHook(null);
+    const coordinator = {
+      loadSettings: async () => null,
+      loadSettingsEnvelope: async () => ({
+        settings: {
+          version: 1,
+          gateway: {
+            url: "ws://localhost:18789",
+            token: "",
+            adapterType: "openclaw",
+            profiles: {
+              openclaw: {
+                url: "ws://localhost:18789",
+                token: "",
+              },
+            },
+          },
+          focused: {},
+          avatars: {},
+          analytics: {},
+          voiceReplies: {},
+          office: {},
+          deskAssignments: {},
+          standup: {},
+          taskBoard: {},
+        },
+        localGatewayDefaults: { url: "ws://localhost:18789", tokenConfigured: true },
+        localGatewayDefaultsPrivate: { url: "ws://localhost:18789", token: "local-token" },
+      }),
+      schedulePatch: () => {},
+      flushPending: async () => {},
+    };
+
+    const Probe = () => {
+      const state = useGatewayConnection(coordinator);
+      return createElement("div", { "data-testid": "token" }, state.token);
+    };
+
+    render(createElement(Probe));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("token")).toHaveTextContent("local-token");
+    });
   });
 
   it("loads_selected_adapter_type_without_persisting_unchanged_settings", async () => {

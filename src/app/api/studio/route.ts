@@ -16,17 +16,34 @@ export const runtime = "nodejs";
 const isPatch = (value: unknown): value is StudioSettingsPatch =>
   Boolean(value && typeof value === "object");
 
-export async function GET() {
+const isLoopbackHost = (value: string | null) => {
+  const raw = value?.trim() ?? "";
+  if (!raw) return false;
+  try {
+    const parsed = new URL(raw.includes("://") ? raw : `http://${raw}`);
+    return parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]";
+  } catch {
+    return false;
+  }
+};
+
+export async function GET(request?: Request) {
   try {
     const settings = loadStudioSettings();
     const localGatewayDefaults = loadLocalGatewayDefaults();
+    const includePrivateLocalDefaults = isLoopbackHost(request?.headers.get("host") ?? null);
     return NextResponse.json(
       {
         settings: sanitizeStudioSettings(settings),
         localGatewayDefaults: sanitizeStudioGatewaySettings(localGatewayDefaults),
-        // gatewayPrivate and localGatewayDefaultsPrivate are intentionally omitted.
+        ...(includePrivateLocalDefaults
+          ? { localGatewayDefaultsPrivate: localGatewayDefaults }
+          : {}),
+        // gatewayPrivate is intentionally omitted.
         // Upstream tokens must not cross the browser API boundary — the Studio proxy
         // (server/gateway-proxy.js) injects the server-side token into connect frames.
+        // Local OpenClaw can bypass the proxy only for loopback Studio requests, so
+        // it receives localGatewayDefaultsPrivate when the browser is also local.
       },
       { headers: { "Cache-Control": "no-store" } }
     );

@@ -782,7 +782,7 @@ export const useGatewayConnection = (
         // We derive profiles from the sanitized public settings only.
         if (cancelled) return;
         const normalizedDefaults = normalizeLocalGatewayDefaults(
-          envelope.localGatewayDefaults,
+          envelope.localGatewayDefaultsPrivate ?? envelope.localGatewayDefaults,
         );
         setLocalGatewayDefaults(normalizedDefaults);
         const gatewaySettings = settings?.gateway ?? null;
@@ -795,7 +795,14 @@ export const useGatewayConnection = (
           resolvedGatewayProfiles.activeProfile ??
           resolveDefaultStudioGatewayProfile(nextAdapterType, normalizedDefaults);
         const nextGatewayUrl = selectedProfile.url ?? "";
-        const nextToken = selectedProfile.token ?? "";
+        const selectedProfileToken = selectedProfile.token ?? "";
+        const nextToken =
+          selectedProfileToken ||
+          (nextAdapterType === "openclaw" &&
+          normalizedDefaults?.token &&
+          normalizedDefaults.url === nextGatewayUrl
+            ? normalizedDefaults.token
+            : "");
         // Patch Hermes Phase 2: allow auto-connect for auto-managed adapters
         // (hermes/openclaw/demo) when a persisted URL exists, even if
         // gateway.lastKnownGood.adapterType doesn't match the currently
@@ -927,7 +934,9 @@ export const useGatewayConnection = (
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         try {
           await client.connect({
-            gatewayUrl: resolveStudioProxyGatewayUrl(),
+            gatewayUrl: resolveStudioProxyGatewayUrl(
+              selectedAdapterType === "openclaw" ? gatewayUrl : undefined
+            ),
             token,
             authScopeKey: gatewayUrl,
             clientName: resolveGatewayClientName(selectedAdapterType, gatewayUrl),

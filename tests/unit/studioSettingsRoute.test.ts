@@ -88,6 +88,40 @@ describe("studio settings route", () => {
     });
   });
 
+  it("GET includes private local gateway defaults for loopback Studio requests", async () => {
+    tempDir = makeTempDir("studio-settings-get-local-private-defaults");
+    process.env.OPENCLAW_STATE_DIR = tempDir;
+    fs.writeFileSync(
+      path.join(tempDir, "openclaw.json"),
+      JSON.stringify({ gateway: { port: 18792, auth: { token: "local-token" } } }, null, 2),
+      "utf8"
+    );
+
+    const response = await GET(
+      new Request("http://127.0.0.1:3000/api/studio", {
+        headers: { host: "127.0.0.1:3000" },
+      })
+    );
+    const body = (await response.json()) as {
+      localGatewayDefaults?: { tokenConfigured?: boolean } | null;
+      localGatewayDefaultsPrivate?: { url?: string; token?: string; adapterType?: string } | null;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.localGatewayDefaults?.tokenConfigured).toBe(true);
+    expect(body.localGatewayDefaultsPrivate).toEqual({
+      url: "ws://localhost:18792",
+      token: "local-token",
+      adapterType: "openclaw",
+      profiles: {
+        openclaw: {
+          url: "ws://localhost:18792",
+          token: "local-token",
+        },
+      },
+    });
+  });
+
   it("PUT returns 400 for non-object JSON payload", async () => {
     tempDir = makeTempDir("studio-settings-put-invalid");
     process.env.OPENCLAW_STATE_DIR = tempDir;
