@@ -58,6 +58,14 @@ const resolvePort = () => {
   return port;
 };
 
+const resolveOptionalPort = (rawValue) => {
+  const raw = String(rawValue ?? "").trim();
+  if (!raw) return null;
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) return null;
+  return port;
+};
+
 const resolvePathname = (url) => {
   const raw = typeof url === "string" ? url : "";
   const idx = raw.indexOf("?");
@@ -113,6 +121,7 @@ async function main() {
   const hostnames = Array.from(new Set(resolveHosts(process.env)));
   const hostname = hostnames[0] ?? "127.0.0.1";
   const port = resolvePort();
+  const gatewayProxyPort = resolveOptionalPort(process.env.GATEWAY_PROXY_PORT);
   for (const host of hostnames) {
     assertPublicHostAllowed({
       host,
@@ -123,7 +132,7 @@ async function main() {
   const app = next({
     dev,
     hostname,
-    port,
+    ...(dev ? { port } : {}),
   });
   const handle = app.getRequestHandler();
 
@@ -146,13 +155,17 @@ async function main() {
   });
 
   await app.prepare();
-  const handleUpgrade = app.getUpgradeHandler();
+  const handleUpgrade = dev ? app.getUpgradeHandler() : null;
   const handleServerUpgrade = (req, socket, head) => {
     if (resolvePathname(req.url) === "/api/gateway/ws") {
       proxy.handleUpgrade(req, socket, head);
       return;
     }
-    handleUpgrade(req, socket, head);
+    if (handleUpgrade) {
+      handleUpgrade(req, socket, head);
+      return;
+    }
+    socket.destroy();
   };
 
   const httpsCert = useHttps ? await generateHttpsCert() : null;
@@ -169,23 +182,50 @@ async function main() {
         });
 
   const servers = hostnames.map(() => createServer());
+  const gatewayProxyServers =
+    gatewayProxyPort && gatewayProxyPort !== port
+      ? hostnames.map(() =>
+          useHttps
+            ? https.createServer(httpsCert, (req, res) => {
+                if (accessGate.handleHttp(req, res)) return;
+                res.statusCode = 404;
+                res.end("Not found");
+              })
+            : http.createServer((req, res) => {
+                if (accessGate.handleHttp(req, res)) return;
+                res.statusCode = 404;
+                res.end("Not found");
+              })
+        )
+      : [];
 
   const attachUpgradeHandlers = (server) => {
+    server.removeAllListeners("upgrade");
     server.on("upgrade", handleServerUpgrade);
   };
 
   for (const server of servers) {
     attachUpgradeHandlers(server);
   }
+  for (const server of gatewayProxyServers) {
+    server.removeAllListeners("upgrade");
+    server.on("upgrade", (req, socket, head) => {
+      if (resolvePathname(req.url) === "/api/gateway/ws") {
+        proxy.handleUpgrade(req, socket, head);
+        return;
+      }
+      socket.destroy();
+    });
+  }
 
-  const listenOnHost = (server, host) =>
+  const listenOnHost = (server, host, listenPort = port) =>
     new Promise((resolve, reject) => {
       const onError = (err) => {
         server.off("error", onError);
         reject(err);
       };
       server.once("error", onError);
-      server.listen(port, host, () => {
+      server.listen(listenPort, host, () => {
         server.off("error", onError);
         resolve();
       });
@@ -199,8 +239,16 @@ async function main() {
 
   try {
     await Promise.all(servers.map((server, index) => listenOnHost(server, hostnames[index])));
+    if (gatewayProxyServers.length > 0 && gatewayProxyPort) {
+      await Promise.all(
+        gatewayProxyServers.map((server, index) =>
+          listenOnHost(server, hostnames[index], gatewayProxyPort)
+        )
+      );
+    }
   } catch (err) {
     await Promise.all(servers.map((server) => closeServer(server)));
+    await Promise.all(gatewayProxyServers.map((server) => closeServer(server)));
     throw err;
   }
 
@@ -213,6 +261,12 @@ async function main() {
   const protocol = useHttps ? "https" : "http";
   const browserUrl = `${protocol}://${hostForBrowser}:${port}`;
   console.info(`Open in browser: ${browserUrl}`);
+  if (gatewayProxyServers.length > 0 && gatewayProxyPort) {
+    const wsProtocol = useHttps ? "wss" : "ws";
+    console.info(
+      `Gateway proxy WebSocket: ${wsProtocol}://${hostForBrowser}:${gatewayProxyPort}/api/gateway/ws`
+    );
+  }
   if (useHttps) {
     console.info("HTTPS mode: self-signed cert in use. You may need to accept a browser security warning once.");
     console.info(`Spotify redirect URI: ${browserUrl}/office`);

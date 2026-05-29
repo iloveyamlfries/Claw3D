@@ -708,20 +708,21 @@ export class GatewayBrowserClient {
     this.connectSent = false;
     if (this.connectTimer !== null) window.clearTimeout(this.connectTimer);
     // When device auth is active the gateway sends a connect.challenge nonce
-    // that must arrive before we transmit the connect frame. 75 ms is fine for
-    // low-latency links (LAN, Tailscale) but SSH tunnels to remote hosts can
-    // easily exceed that, causing the timer to fire before the nonce arrives.
-    // The result is a nonce-less device payload that the proxy treats as
-    // incomplete (hasDevice=false), downgrades to webchat-ui, and OpenClaw then
-    // rejects with a protocol-version mismatch. Use a generous fallback when we
-    // would actually generate device auth so the nonce has time to arrive; the
-    // challenge handler cancels the timer immediately when it does, so fast
-    // connections are unaffected.
+    // that must arrive before we transmit the connect frame. Use a generous
+    // fallback when we would actually generate device auth so the nonce has time
+    // to arrive; the challenge handler cancels the timer immediately when it
+    // does, so fast connections are unaffected. Without device auth support,
+    // send immediately so proxy connections are not dropped before connect.
     const expectChallenge =
       !this.opts.disableDeviceAuth &&
       typeof crypto !== "undefined" &&
       !!crypto.subtle;
-    const delayMs = expectChallenge ? 5_000 : 75;
+    if (!expectChallenge) {
+      gatewayBrowserDebugLog("queue-connect", { delayMs: 0 });
+      void this.sendConnect();
+      return;
+    }
+    const delayMs = 5_000;
     gatewayBrowserDebugLog("queue-connect", { delayMs });
     this.connectTimer = window.setTimeout(() => {
       void this.sendConnect();

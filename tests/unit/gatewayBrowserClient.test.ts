@@ -62,7 +62,7 @@ describe("GatewayBrowserClient", () => {
     }
   });
 
-  it("sends connect when connect.challenge arrives", async () => {
+  it("sends connect immediately when device auth challenge support is unavailable", async () => {
     const client = new GatewayBrowserClient({ url: "ws://example.com" });
     client.start();
 
@@ -72,8 +72,15 @@ describe("GatewayBrowserClient", () => {
     }
 
     ws.onopen?.();
+    await vi.runAllTicks();
 
-    expect(MockWebSocket.sent).toHaveLength(0);
+    expect(MockWebSocket.sent).toHaveLength(1);
+    const frame = JSON.parse(MockWebSocket.sent[0] ?? "{}");
+    expect(frame.type).toBe("req");
+    expect(frame.method).toBe("connect");
+    expect(typeof frame.id).toBe("string");
+    expect(frame.id).toMatch(UUID_V4_RE);
+    expect(frame.params?.client?.id).toBe("openclaw-control-ui");
 
     ws.onmessage?.({
       data: JSON.stringify({
@@ -86,12 +93,6 @@ describe("GatewayBrowserClient", () => {
     await vi.runAllTicks();
 
     expect(MockWebSocket.sent).toHaveLength(1);
-    const frame = JSON.parse(MockWebSocket.sent[0] ?? "{}");
-    expect(frame.type).toBe("req");
-    expect(frame.method).toBe("connect");
-    expect(typeof frame.id).toBe("string");
-    expect(frame.id).toMatch(UUID_V4_RE);
-    expect(frame.params?.client?.id).toBe("openclaw-control-ui");
   });
 
   it("truncates connect-failed close reason to websocket limit", async () => {

@@ -4,6 +4,14 @@ type StudioProxyLocation = Pick<Location, "hostname" | "port" | "protocol">;
 
 const isLoopbackHost = (hostname: string) => LOOPBACK_HOSTS.has(hostname.toLowerCase());
 
+const resolveConfiguredProxyPort = () => {
+  const raw = process.env.NEXT_PUBLIC_GATEWAY_PROXY_PORT?.trim();
+  if (!raw) return "";
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) return "";
+  return String(port);
+};
+
 export const resolveStudioProxyGatewayUrl = (
   upstreamGatewayUrl?: string,
   currentLocation: StudioProxyLocation = window.location
@@ -23,6 +31,7 @@ export const resolveStudioProxyGatewayUrl = (
   const protocol = currentLocation.protocol === "https:" ? "wss" : "ws";
   const hostname =
     currentLocation.hostname === "localhost" ? "127.0.0.1" : currentLocation.hostname;
-  const host = currentLocation.port ? `${hostname}:${currentLocation.port}` : hostname;
+  const port = resolveConfiguredProxyPort() || currentLocation.port;
+  const host = port ? `${hostname}:${port}` : hostname;
   return `${protocol}://${host}/api/gateway/ws`;
 };
