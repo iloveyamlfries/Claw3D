@@ -31,7 +31,9 @@ export async function GET(request?: Request) {
   try {
     const settings = loadStudioSettings();
     const localGatewayDefaults = loadLocalGatewayDefaults();
-    const includePrivateLocalDefaults = isLoopbackHost(request?.headers.get("host") ?? null);
+    const includePrivateLocalDefaults =
+      isLoopbackHost(request?.headers.get("host") ?? null) ||
+      Boolean(process.env.STUDIO_ACCESS_TOKEN?.trim());
     return NextResponse.json(
       {
         settings: sanitizeStudioSettings(settings),

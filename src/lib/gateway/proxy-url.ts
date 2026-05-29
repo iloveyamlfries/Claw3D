@@ -1,22 +1,32 @@
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
-export const resolveStudioProxyGatewayUrl = (upstreamGatewayUrl?: string): string => {
+type StudioProxyLocation = Pick<Location, "hostname" | "port" | "protocol">;
+
+const isLoopbackHost = (hostname: string) => LOOPBACK_HOSTS.has(hostname.toLowerCase());
+
+export const resolveStudioProxyGatewayUrl = (
+  upstreamGatewayUrl?: string,
+  currentLocation: StudioProxyLocation = window.location
+): string => {
   const raw = typeof upstreamGatewayUrl === "string" ? upstreamGatewayUrl.trim() : "";
   if (raw) {
     try {
       const parsed = new URL(raw);
-      if (LOOPBACK_HOSTS.has(parsed.hostname)) {
+      if (isLoopbackHost(parsed.hostname) && isLoopbackHost(currentLocation.hostname)) {
         return raw;
+      }
+      if (isLoopbackHost(parsed.hostname) && !isLoopbackHost(currentLocation.hostname)) {
+        parsed.hostname = currentLocation.hostname;
+        return parsed.toString();
       }
     } catch {
       // Fall through to the Studio proxy for malformed or non-URL values.
     }
   }
 
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const protocol = currentLocation.protocol === "https:" ? "wss" : "ws";
   const hostname =
-    window.location.hostname === "localhost" ? "127.0.0.1" : window.location.hostname;
-  const host = window.location.port ? `${hostname}:${window.location.port}` : hostname;
+    currentLocation.hostname === "localhost" ? "127.0.0.1" : currentLocation.hostname;
+  const host = currentLocation.port ? `${hostname}:${currentLocation.port}` : hostname;
   return `${protocol}://${host}/api/gateway/ws`;
 };
-

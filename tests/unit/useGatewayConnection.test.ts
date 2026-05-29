@@ -374,6 +374,24 @@ describe("useGatewayConnection", () => {
     );
   });
 
+  it("uses_webchat_client_id_when_local_openclaw_is_rewritten_for_remote_browser", async () => {
+    const mod = await import("@/lib/gateway/GatewayClient");
+    expect(
+      mod.resolveGatewayClientNameForConnection(
+        "openclaw",
+        "ws://localhost:18790",
+        "ws://100.91.24.29:18790/"
+      )
+    ).toBe("webchat-ui");
+    expect(
+      mod.resolveGatewayClientNameForConnection(
+        "openclaw",
+        "ws://localhost:18790",
+        "ws://localhost:18790"
+      )
+    ).toBe("openclaw-control-ui");
+  });
+
   it("auto_applies_runtime_local_defaults_when_no_saved_gateway_and_build_time_empty", async () => {
     // Simulates #57: NEXT_PUBLIC_GATEWAY_URL was never rebuilt, but
     // CLAW3D_GATEWAY_URL is set on the server so localGatewayDefaults

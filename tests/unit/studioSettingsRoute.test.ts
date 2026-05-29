@@ -10,10 +10,12 @@ const makeTempDir = (name: string) => fs.mkdtempSync(path.join(os.tmpdir(), `${n
 
 describe("studio settings route", () => {
   const priorStateDir = process.env.OPENCLAW_STATE_DIR;
+  const priorStudioAccessToken = process.env.STUDIO_ACCESS_TOKEN;
   let tempDir: string | null = null;
 
   afterEach(() => {
     process.env.OPENCLAW_STATE_DIR = priorStateDir;
+    process.env.STUDIO_ACCESS_TOKEN = priorStudioAccessToken;
     if (tempDir) {
       fs.rmSync(tempDir, { recursive: true, force: true });
       tempDir = null;
@@ -120,6 +122,34 @@ describe("studio settings route", () => {
         },
       },
     });
+  });
+
+  it("GET includes private local gateway defaults for access-gated remote Studio requests", async () => {
+    tempDir = makeTempDir("studio-settings-get-remote-private-defaults");
+    process.env.OPENCLAW_STATE_DIR = tempDir;
+    process.env.STUDIO_ACCESS_TOKEN = "studio-token";
+    fs.writeFileSync(
+      path.join(tempDir, "openclaw.json"),
+      JSON.stringify({ gateway: { port: 18793, auth: { token: "local-token" } } }, null, 2),
+      "utf8"
+    );
+
+    const response = await GET(
+      new Request("http://100.91.24.29:3000/api/studio", {
+        headers: { host: "100.91.24.29:3000" },
+      })
+    );
+    const body = (await response.json()) as {
+      localGatewayDefaultsPrivate?: { url?: string; token?: string } | null;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.localGatewayDefaultsPrivate).toEqual(
+      expect.objectContaining({
+        url: "ws://localhost:18793",
+        token: "local-token",
+      })
+    );
   });
 
   it("PUT returns 400 for non-object JSON payload", async () => {

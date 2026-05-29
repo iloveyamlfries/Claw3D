@@ -139,6 +139,20 @@ export const resolveGatewayClientName = (
     : OPENCLAW_WEBCHAT_UI_CLIENT_ID;
 };
 
+export const resolveGatewayClientNameForConnection = (
+  adapterType: StudioGatewayAdapterType,
+  upstreamGatewayUrl: string,
+  browserGatewayUrl: string
+) => {
+  if (adapterType !== "openclaw") {
+    return OPENCLAW_CONTROL_UI_CLIENT_ID;
+  }
+  if (browserGatewayUrl !== upstreamGatewayUrl) {
+    return OPENCLAW_WEBCHAT_UI_CLIENT_ID;
+  }
+  return resolveGatewayClientName(adapterType, upstreamGatewayUrl);
+};
+
 export const resolveInitialGatewayAutoConnectDelayMs = (
   adapterType: StudioGatewayAdapterType
 ): number => {
@@ -933,13 +947,18 @@ export const useGatewayConnection = (
       let lastError: unknown = null;
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         try {
+          const browserGatewayUrl = resolveStudioProxyGatewayUrl(
+            selectedAdapterType === "openclaw" ? gatewayUrl : undefined
+          );
           await client.connect({
-            gatewayUrl: resolveStudioProxyGatewayUrl(
-              selectedAdapterType === "openclaw" ? gatewayUrl : undefined
-            ),
+            gatewayUrl: browserGatewayUrl,
             token,
             authScopeKey: gatewayUrl,
-            clientName: resolveGatewayClientName(selectedAdapterType, gatewayUrl),
+            clientName: resolveGatewayClientNameForConnection(
+              selectedAdapterType,
+              gatewayUrl,
+              browserGatewayUrl
+            ),
             disableDeviceAuth: selectedAdapterType !== "openclaw",
           });
           lastError = null;
