@@ -239,7 +239,7 @@ describe("useGatewayConnection", () => {
       expect(captured.url).toBe("ws://127.0.0.1:3000/api/gateway/ws");
     });
     expect(captured.authScopeKey).toBe("wss://pi5.myth-coho.ts.net");
-    expect(captured.clientName).toBe("webchat-ui");
+    expect(captured.clientName).toBe("openclaw-control-ui");
   });
 
   it("keeps_control_ui_identity_for_local_openclaw_connections", async () => {
@@ -361,10 +361,10 @@ describe("useGatewayConnection", () => {
     expect(mod.resolveInitialGatewayConnectAttemptCount("openclaw", true)).toBe(1);
   });
 
-  it("uses_webchat_client_id_only_for_remote_openclaw", async () => {
+  it("uses_control_ui_client_id_for_openclaw_connections", async () => {
     const mod = await import("@/lib/gateway/GatewayClient");
     expect(mod.resolveGatewayClientName("openclaw", "wss://pi5.myth-coho.ts.net")).toBe(
-      "webchat-ui"
+      "openclaw-control-ui"
     );
     expect(mod.resolveGatewayClientName("openclaw", "ws://localhost:18789")).toBe(
       "openclaw-control-ui"
@@ -374,7 +374,7 @@ describe("useGatewayConnection", () => {
     );
   });
 
-  it("uses_webchat_client_id_when_local_openclaw_is_rewritten_for_remote_browser", async () => {
+  it("keeps_control_ui_client_id_when_local_openclaw_is_rewritten_for_remote_browser", async () => {
     const mod = await import("@/lib/gateway/GatewayClient");
     expect(
       mod.resolveGatewayClientNameForConnection(
@@ -382,7 +382,7 @@ describe("useGatewayConnection", () => {
         "ws://localhost:18790",
         "ws://100.91.24.29:18790/"
       )
-    ).toBe("webchat-ui");
+    ).toBe("openclaw-control-ui");
     expect(
       mod.resolveGatewayClientNameForConnection(
         "openclaw",
