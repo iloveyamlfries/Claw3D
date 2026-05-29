@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { isLikelyLocalGatewayUrl } from "@/lib/gateway/local-gateway";
+import { canRemoveSkillSource } from "@/lib/skills/presentation";
 import { removeSkillLocally } from "@/lib/skills/remove-local";
 import type { RemovableSkillSource, SkillRemoveRequest } from "@/lib/skills/types";
 import {
@@ -12,13 +13,7 @@ import { loadStudioSettings } from "@/lib/studio/settings-store";
 
 export const runtime = "nodejs";
 
-const REMOVABLE_SOURCES = new Set<RemovableSkillSource>([
-  "openclaw-managed",
-  "openclaw-workspace",
-]);
-
 const SAFE_PATH_RE = /^[a-zA-Z0-9_.~\x2F:\\-]+$/;
-
 const normalizeRequired = (value: unknown, field: string): string => {
   if (typeof value !== "string") {
     throw new Error(`${field} is required.`);
@@ -54,7 +49,7 @@ const normalizeRemoveRequest = (body: unknown): SkillRemoveRequest => {
 
   const record = body as Partial<Record<keyof SkillRemoveRequest, unknown>>;
   const sourceRaw = normalizeRequired(record.source, "source");
-  if (!REMOVABLE_SOURCES.has(sourceRaw as RemovableSkillSource)) {
+  if (!canRemoveSkillSource(sourceRaw, false)) {
     throw new Error(`Unsupported skill source for removal: ${sourceRaw}`);
   }
 
