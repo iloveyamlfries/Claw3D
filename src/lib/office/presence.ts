@@ -1,9 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import type {
+  SummaryPreviewSnapshot,
+  SummaryStatusSnapshot,
+} from "@/features/agents/state/runtimeEventBridge";
 import { resolveStateDir } from "@/lib/clawdbot/paths";
 import { readConfigAgentList } from "@/lib/gateway/agentConfig";
+import { NodeGatewayClient, buildAgentMainSessionKey } from "@/lib/gateway/nodeGatewayClient";
+import { buildOfficePresenceSnapshotFromGateway } from "@/lib/office/gatewayPresence";
 import type { OfficeAgentState } from "@/lib/office/schema";
+import { loadStudioSettings } from "@/lib/studio/settings-store";
 
 export type OfficeAgentPresence = {
   agentId: string;
@@ -19,22 +26,6 @@ export type OfficePresenceSnapshot = {
 };
 
 const OPENCLAW_CONFIG_FILENAME = "openclaw.json";
-
-const stableHash = (input: string): number => {
-  let hash = 0;
-  for (let index = 0; index < input.length; index += 1) {
-    hash = (hash * 31 + input.charCodeAt(index)) >>> 0;
-  }
-  return hash;
-};
-
-const resolveStateFromSeed = (seed: number): OfficeAgentState => {
-  const mod = seed % 20;
-  if (mod <= 9) return "working";
-  if (mod <= 14) return "idle";
-  if (mod <= 17) return "meeting";
-  return "error";
-};
 
 const asRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -135,15 +126,10 @@ export const fetchRemoteOfficePresenceSnapshot = async (params: {
   }
 };
 
-export const loadOfficePresenceSnapshot = (workspaceId: string): OfficePresenceSnapshot => {
+const readLocalConfigAgents = (): OfficeAgentPresence[] => {
   const configPath = path.join(resolveStateDir(), OPENCLAW_CONFIG_FILENAME);
-  const timestamp = new Date().toISOString();
   if (!fs.existsSync(configPath)) {
-    return {
-      workspaceId,
-      timestamp,
-      agents: [],
-    };
+    return [];
   }
   const raw = fs.readFileSync(configPath, "utf8");
   const parsed = JSON.parse(raw) as unknown;
@@ -152,21 +138,80 @@ export const loadOfficePresenceSnapshot = (workspaceId: string): OfficePresenceS
       ? (parsed as Record<string, unknown>)
       : undefined;
   const agentList = readConfigAgentList(config);
-  const bucket = Math.floor(Date.now() / 2000);
-  const agents: OfficeAgentPresence[] = agentList.map((entry) => {
+  return agentList.map((entry) => {
     const id = entry.id.trim();
     const nameRaw = typeof entry.name === "string" ? entry.name : id;
-    const seed = stableHash(`${id}:${bucket}`);
     return {
       agentId: id,
       name: nameRaw,
-      state: resolveStateFromSeed(seed),
+      state: "idle",
       preferredDeskId: `desk-${id}`,
     };
   });
-  return {
-    workspaceId,
-    timestamp,
-    agents,
-  };
+};
+
+const buildIdleLocalPresenceSnapshot = (
+  workspaceId: string,
+  timestamp: string
+): OfficePresenceSnapshot => ({
+  workspaceId,
+  timestamp,
+  agents: readLocalConfigAgents(),
+});
+
+export const loadOfficePresenceSnapshot = async (
+  workspaceId: string
+): Promise<OfficePresenceSnapshot> => {
+  const timestamp = new Date().toISOString();
+  const settings = loadStudioSettings();
+  const gatewayUrl = settings.gateway?.url?.trim() ?? "";
+  if (!gatewayUrl) {
+    return buildIdleLocalPresenceSnapshot(workspaceId, timestamp);
+  }
+
+  const gatewayClient = new NodeGatewayClient();
+  try {
+    await gatewayClient.connect({
+      gatewayUrl,
+      token: settings.gateway?.token,
+    });
+    const agentsResult = (await gatewayClient.request("agents.list", {})) as {
+      mainKey?: string;
+      agents?: Array<{ id?: string; name?: string; identity?: { name?: string } }>;
+    };
+    const statusSummary = (await gatewayClient.request("status", {})) as SummaryStatusSnapshot;
+    const agentIds = Array.isArray(agentsResult.agents)
+      ? agentsResult.agents
+          .map((agent) => (typeof agent.id === "string" ? agent.id.trim() : ""))
+          .filter((agentId) => agentId.length > 0)
+      : [];
+    const mainKey = agentsResult.mainKey?.trim() || "main";
+    const sessionKeys = agentIds.map((agentId) => buildAgentMainSessionKey(agentId, mainKey));
+    const previewSnapshot: SummaryPreviewSnapshot | null =
+      sessionKeys.length > 0
+        ? ((await gatewayClient.request("sessions.preview", {
+            keys: sessionKeys,
+            limit: 8,
+            maxChars: 240,
+          })) as SummaryPreviewSnapshot)
+        : null;
+    const snapshot = buildOfficePresenceSnapshotFromGateway({
+      agentsResult,
+      statusSummary,
+      previewSnapshot,
+      workspaceId,
+    });
+    return {
+      ...snapshot,
+      timestamp,
+    };
+  } catch (error) {
+    console.warn(
+      "[office-presence] Failed to load gateway presence; falling back to idle local agents.",
+      error
+    );
+    return buildIdleLocalPresenceSnapshot(workspaceId, timestamp);
+  } finally {
+    gatewayClient.close();
+  }
 };

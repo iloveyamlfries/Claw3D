@@ -18,6 +18,14 @@ type GatewayAgentsListResult = {
   agents?: GatewayAgentsListEntry[];
 };
 
+type GatewayStatusSessionEntry = {
+  key?: string;
+  updatedAt?: number | null;
+  status?: unknown;
+  state?: unknown;
+  phase?: unknown;
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value && typeof value === "object" && !Array.isArray(value));
 
@@ -74,6 +82,20 @@ const resolvePreviewState = (
   return null;
 };
 
+const normalizeSessionStatus = (entry: GatewayStatusSessionEntry) => {
+  const value = entry.status ?? entry.state ?? entry.phase;
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+};
+
+const isErrorSession = (entry: GatewayStatusSessionEntry) => {
+  const status = normalizeSessionStatus(entry);
+  return status === "error" || status === "failed";
+};
+
+const isRecentlyUpdated = (entry: GatewayStatusSessionEntry, now: number) => {
+  return typeof entry.updatedAt === "number" && now - entry.updatedAt <= RECENT_ACTIVITY_MS;
+};
+
 const resolveAgentState = (
   agentId: string,
   agentsResult: GatewayAgentsListResult | null,
@@ -81,15 +103,30 @@ const resolveAgentState = (
   previewSnapshot: SummaryPreviewSnapshot | null,
   now = Date.now(),
 ): OfficeAgentPresence["state"] => {
-  const previewState = resolvePreviewState(agentId, agentsResult, previewSnapshot);
-  if (previewState) {
-    return previewState;
-  }
+  const mainKey =
+    typeof agentsResult?.mainKey === "string" && agentsResult.mainKey.trim().length > 0
+      ? agentsResult.mainKey.trim()
+      : "main";
+  const mainSessionKey = buildAgentMainSessionKey(agentId, mainKey);
   const byAgent = Array.isArray(statusSummary?.sessions?.byAgent)
     ? statusSummary.sessions.byAgent
     : [];
   const recentEntries =
-    byAgent.find((entry) => entry.agentId === agentId)?.recent?.filter(Boolean) ?? [];
+    (byAgent.find((entry) => entry.agentId === agentId)?.recent?.filter(Boolean) ??
+      []) as GatewayStatusSessionEntry[];
+  if (recentEntries.some(isErrorSession)) return "error";
+  if (
+    recentEntries.some((entry) => {
+      const key = typeof entry.key === "string" ? entry.key.trim() : "";
+      return key.length > 0 && key !== mainSessionKey && isRecentlyUpdated(entry, now);
+    })
+  ) {
+    return "meeting";
+  }
+  const previewState = resolvePreviewState(agentId, agentsResult, previewSnapshot);
+  if (previewState) {
+    return previewState;
+  }
   const latestUpdatedAt = recentEntries.reduce<number | null>((latest, entry) => {
     const updatedAt = typeof entry.updatedAt === "number" ? entry.updatedAt : null;
     if (updatedAt === null) return latest;

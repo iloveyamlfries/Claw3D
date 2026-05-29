@@ -105,7 +105,7 @@ export async function GET(request: Request) {
         gatewayClient.close();
       }
     }
-    const snapshot = loadOfficePresenceSnapshot(workspaceId);
+    const snapshot = await loadOfficePresenceSnapshot(workspaceId);
     return NextResponse.json(snapshot, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load office presence.";
